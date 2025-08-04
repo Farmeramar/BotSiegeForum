@@ -33,7 +33,9 @@ async def update_forum_overview():
     output_channel = bot.get_channel(OUTPUT_CHANNEL_ID)
 
     threads = list(forum_channel.threads)
-    archived = await forum_channel.archived_threads().flatten()
+    archived = []
+    async for thread in forum_channel.archived_threads(limit=None):
+        archived.append(thread)
     all_threads = threads + archived
 
     if not all_threads:
