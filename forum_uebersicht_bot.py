@@ -33,9 +33,11 @@ async def update_forum_overview():
     output_channel = bot.get_channel(OUTPUT_CHANNEL_ID)
 
     threads = list(forum_channel.threads)
+
     archived = []
     async for thread in forum_channel.archived_threads(limit=None):
         archived.append(thread)
+
     all_threads = threads + archived
 
     if not all_threads:
@@ -44,7 +46,8 @@ async def update_forum_overview():
         content = "**📌 Übersicht der Forum-Einträge:**\n\n"
         for thread in all_threads:
             author = thread.owner.display_name if thread.owner else "Unbekannt"
-            content += f"- [{thread.name}]({thread.jump_url}) von {author}\n"
+            count = thread.message_count or "?"
+            content += f"- [{thread.name}]({thread.jump_url}) von {author} ({count} Beiträge)\n"
 
     global message_id
     if message_id:
