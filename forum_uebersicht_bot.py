@@ -73,12 +73,36 @@ async def update_forum_overview():
     if not all_threads:
         content = "⚠️ Es gibt derzeit keine Forum-Einträge."
     else:
-        content = "**📌 Übersicht der Forum-Einträge:**\n\n"
+        # Separate threads into Bedingungen and Clanmember categories
+        bedingungen_threads = []
+        clanmember_threads = []
+        
         for thread in all_threads:
-            count = await count_posts_with_screenshots(thread)
-            content += f"- [{thread.name}]({thread.jump_url}) ({count} Beiträge)\n"
+            if "Bedingung" in thread.name:
+                bedingungen_threads.append(thread)
+            else:
+                clanmember_threads.append(thread)
+        
+        content = ""
+        
+        # Overview Bedingungen section
+        if bedingungen_threads:
+            content += "**📋 Overview Bedingungen:**\n\n"
+            for thread in bedingungen_threads:
+                count = await count_posts_with_screenshots(thread)
+                content += f"- [{thread.name}]({thread.jump_url}) ({count} Beiträge)\n"
+            content += "\n"
+        
+        # Overview Clanmember section
+        if clanmember_threads:
+            content += "**👥 Overview Clanmember:**\n\n"
+            for thread in clanmember_threads:
+                author = thread.owner.display_name if thread.owner else "Unbekannt"
+                count = await count_posts_with_screenshots(thread)
+                content += f"- [{thread.name}]({thread.jump_url}) von {author} ({count} Beiträge)\n"
+            content += "\n"
 
-        content += f"\n*Letzte Aktualisierung: {datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')} UTC*"
+        content += f"*Letzte Aktualisierung: {datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')} UTC*"
 
     message_id = load_message_id()
 
