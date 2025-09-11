@@ -27,3 +27,7 @@ args = "python forum_uebersicht_bot.py"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[deployment]
+deploymentTarget = "vm"
+run = ["python", "forum_uebersicht_bot.py"]
