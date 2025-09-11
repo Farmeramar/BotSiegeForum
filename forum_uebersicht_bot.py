@@ -75,9 +75,8 @@ async def update_forum_overview():
     else:
         content = "**📌 Übersicht der Forum-Einträge:**\n\n"
         for thread in all_threads:
-            author = thread.owner.display_name if thread.owner else "Unbekannt"
             count = await count_posts_with_screenshots(thread)
-            content += f"- [{thread.name}]({thread.jump_url}) von {author} ({count} Beiträge)\n"
+            content += f"- [{thread.name}]({thread.jump_url}) ({count} Beiträge)\n"
 
         content += f"\n*Letzte Aktualisierung: {datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')} UTC*"
 
