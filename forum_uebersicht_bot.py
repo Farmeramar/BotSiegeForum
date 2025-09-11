@@ -54,7 +54,7 @@ async def on_ready():
     update_forum_overview.start()
 
 
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=1)
 async def update_forum_overview():
     await bot.wait_until_ready()
     forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
