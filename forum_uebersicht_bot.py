@@ -50,7 +50,7 @@ async def count_logical_posts(thread, window_minutes=10):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Eingeloggt als {bot.user}")
+    print(f"Eingeloggt als {bot.user}")
     update_forum_overview.start()
 
 
