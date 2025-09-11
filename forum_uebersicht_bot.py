@@ -90,7 +90,9 @@ async def update_forum_overview():
             content += "**📋 Overview Bedingungen:**\n\n"
             for thread in bedingungen_threads:
                 count = await count_posts_with_screenshots(thread)
-                content += f"- [{thread.name}]({thread.jump_url}) ({count} Beiträge)\n"
+                # Remove "- Bedingung" from display name
+                display_name = thread.name.replace("- Bedingung", "").strip()
+                content += f"- [{display_name}]({thread.jump_url}) ({count} Beiträge)\n"
             content += "\n"
         
         # Overview Clanmember section
