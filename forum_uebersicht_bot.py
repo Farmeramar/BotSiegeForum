@@ -29,23 +29,25 @@ def load_message_id():
     with open(MESSAGE_ID_FILE, "r") as f:
         return int(f.read().strip())
 
-async def count_logical_posts(thread, window_minutes=10):
+async def count_posts_with_screenshots(thread):
     messages = [m async for m in thread.history(limit=100, oldest_first=True)]
-
-    logical_posts = 0
-    last_author = None
-    last_time = None
-
-    for msg in messages:
-        if msg.author != last_author:
-            logical_posts += 1
-        elif last_time and (msg.created_at - last_time).total_seconds() > window_minutes * 60:
-            logical_posts += 1
-
-        last_author = msg.author
-        last_time = msg.created_at
-
-    return logical_posts
+    
+    # Skip the first message (index 0) and only count posts with attachments (screenshots)
+    posts_with_screenshots = 0
+    
+    for i, msg in enumerate(messages):
+        if i == 0:  # Skip the first message
+            continue
+        
+        # Check if message has attachments (screenshots/images)
+        if msg.attachments:
+            # Check if any attachment is an image
+            for attachment in msg.attachments:
+                if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']):
+                    posts_with_screenshots += 1
+                    break  # Count this message only once even if it has multiple images
+    
+    return posts_with_screenshots
 
 
 @bot.event
@@ -74,7 +76,7 @@ async def update_forum_overview():
         content = "**📌 Übersicht der Forum-Einträge:**\n\n"
         for thread in all_threads:
             author = thread.owner.display_name if thread.owner else "Unbekannt"
-            count = await count_logical_posts(thread)
+            count = await count_posts_with_screenshots(thread)
             content += f"- [{thread.name}]({thread.jump_url}) von {author} ({count} Beiträge)\n"
 
         content += f"\n*Letzte Aktualisierung: {datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')} UTC*"
