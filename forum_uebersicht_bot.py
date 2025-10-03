@@ -18,15 +18,23 @@ intents.messages = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 CATEGORIES = {
-    "🛡️ Allianzen / Fraktionen": ["bannerlords", "hochelfen", "dunkelelfen", "ork", "untot", "liga", "pakt", "union", "barbaren", "sumpfteufel"],
+    "🛡️ Allianzen / Fraktionen": [
+        "bannerlords", "hochelfen", "dunkelelfen", "ork",
+        "untot", "liga", "pakt", "union", "barbaren", "sumpfteufel"
+    ],
     "✨ Affinitäten": ["magie", "kraft", "void", "seele"],
     "📊 Rollen / Seltenheit": ["ang", "def", "lp", "unterstützer", "legendär", "episch", "selten"]
 }
 
+# Merkt sich die ID des zuletzt geposteten Übersicht-Posts
 overview_message_id = None
 
+# Neue, korrigierte Zählfunktion: zählt **alle Nachrichten**
 async def count_all_posts(thread):
-    return sum(1 async for _ in thread.history(limit=None))
+    count = 0
+    async for _ in thread.history(limit=None):
+        count += 1
+    return count
 
 @bot.event
 async def on_ready():
@@ -34,6 +42,7 @@ async def on_ready():
     await load_existing_message()
     update_forum_overview.start()
 
+# Prüft beim Start, ob schon eine Übersicht existiert
 async def load_existing_message():
     global overview_message_id
     output_channel = bot.get_channel(OUTPUT_CHANNEL_ID)
@@ -61,6 +70,7 @@ async def update_forum_overview():
     grouped = {key: [] for key in CATEGORIES}
     ungrouped = []
 
+    # Threads kategorisieren
     for thread in all_threads:
         title = thread.name.lower()
         matched = False
@@ -72,29 +82,30 @@ async def update_forum_overview():
         if not matched:
             ungrouped.append(thread)
 
-    content = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\\n\\n"
+    # Übersichtstext bauen
+    content = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\n\n"
 
     for category, thread_list in grouped.items():
-        content += f"{category}\\n"
+        content += f"{category}\n"
         if not thread_list:
-            content += "_Keine Einträge_\\n"
+            content += "_Keine Einträge_\n"
         for thread in thread_list:
             count = await count_all_posts(thread)
             owner = thread.owner.display_name if thread.owner else "Unbekannt"
-            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\\n"
-        content += "\\n"
+            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
+        content += "\n"
 
     if ungrouped:
-        content += "👥 **Beiträge der Clanmitglieder**\\n"
+        content += "👥 **Beiträge der Clanmitglieder**\n"
         for thread in ungrouped:
             count = await count_all_posts(thread)
             owner = thread.owner.display_name if thread.owner else "Unbekannt"
-            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\\n"
-        content += "\\n"
+            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
+        content += "\n"
 
     content += f"*Letzte Aktualisierung: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M:%S')} UTC*"
 
-    # Beitrag bearbeiten oder neu posten
+    # Übersicht bearbeiten oder neu erstellen
     if overview_message_id:
         try:
             message = await output_channel.fetch_message(overview_message_id)
@@ -109,6 +120,7 @@ async def update_forum_overview():
         overview_message_id = msg.id
         print("📌 Neue Übersicht erstellt.")
 
+# Manuelles Update über !update
 @bot.command()
 async def update(ctx):
     await update_forum_overview()
