@@ -58,7 +58,7 @@ async def load_existing_message():
             print(f"🔁 Bestehende Übersicht gefunden: {msg.id}")
             break
 
-@tasks.loop(minutes=5)
+@tasks.loop(minutes=1)
 async def update_forum_overview():
     global overview_message_id
     print("🔄 update_forum_overview läuft...")
