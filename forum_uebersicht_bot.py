@@ -2,63 +2,53 @@ import os
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 FORUM_CHANNEL_ID = int(os.getenv('FORUM_CHANNEL_ID'))
 OUTPUT_CHANNEL_ID = int(os.getenv('OUTPUT_CHANNEL_ID'))
-MESSAGE_ID_FILE = "message_id.txt"
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
 intents.messages = True
-intents.presences = False
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-def save_message_id(msg_id):
-    with open(MESSAGE_ID_FILE, "w") as f:
-        f.write(str(msg_id))
+CATEGORIES = {
+    "🛡️ Allianzen / Fraktionen": ["bannerlords", "hochelfen", "dunkelelfen", "ork", "untot", "liga", "pakt", "union", "barbaren", "sumpfteufel"],
+    "✨ Affinitäten": ["magie", "kraft", "void", "seele"],
+    "📊 Rollen / Seltenheit": ["ang", "def", "lp", "unterstützer", "legendär", "episch", "selten"]
+}
 
-def load_message_id():
-    if not os.path.isfile(MESSAGE_ID_FILE):
-        return None
-    with open(MESSAGE_ID_FILE, "r") as f:
-        return int(f.read().strip())
-
-async def count_posts_with_screenshots(thread):
+async def count_logical_posts(thread, window_minutes=10):
     messages = [m async for m in thread.history(limit=100, oldest_first=True)]
-    
-    # Skip the first message (index 0) and only count posts with attachments (screenshots)
-    posts_with_screenshots = 0
-    
-    for i, msg in enumerate(messages):
-        if i == 0:  # Skip the first message
-            continue
-        
-        # Check if message has attachments (screenshots/images)
-        if msg.attachments:
-            # Check if any attachment is an image
-            for attachment in msg.attachments:
-                if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']):
-                    posts_with_screenshots += 1
-                    break  # Count this message only once even if it has multiple images
-    
-    return posts_with_screenshots
 
+    logical_posts = 0
+    last_author = None
+    last_time = None
+
+    for msg in messages:
+        if msg.author != last_author:
+            logical_posts += 1
+        elif last_time and (msg.created_at - last_time).total_seconds() > window_minutes * 60:
+            logical_posts += 1
+
+        last_author = msg.author
+        last_time = msg.created_at
+
+    return logical_posts
 
 @bot.event
 async def on_ready():
-    print(f"Eingeloggt als {bot.user}")
+    print(f"✅ Eingeloggt als {bot.user}")
     update_forum_overview.start()
 
-
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=5)
 async def update_forum_overview():
-    await bot.wait_until_ready()
+    print("🔁 update_forum_overview läuft...")
     forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
     output_channel = bot.get_channel(OUTPUT_CHANNEL_ID)
 
@@ -70,59 +60,42 @@ async def update_forum_overview():
 
     all_threads = threads + archived
 
-    if not all_threads:
-        content = "⚠️ Es gibt derzeit keine Forum-Einträge."
-    else:
-        # Separate threads into Bedingungen and Clanmember categories
-        bedingungen_threads = []
-        clanmember_threads = []
-        
-        for thread in all_threads:
-            if "Bedingung" in thread.name:
-                bedingungen_threads.append(thread)
-            else:
-                clanmember_threads.append(thread)
-        
-        content = ""
-        
-        # Overview Bedingungen section
-        if bedingungen_threads:
-            content += "**📋 Overview Bedingungen:**\n\n"
-            for thread in bedingungen_threads:
-                count = await count_posts_with_screenshots(thread)
-                # Remove "- Bedingung" from display name
-                display_name = thread.name.replace("- Bedingung", "").strip()
-                content += f"- [{display_name}]({thread.jump_url}) ({count} Beiträge)\n"
-            content += "\n"
-        
-        # Overview Clanmember section
-        if clanmember_threads:
-            content += "**👥 Overview Clanmember:**\n\n"
-            for thread in clanmember_threads:
-                author = thread.owner.display_name if thread.owner else "Unbekannt"
-                count = await count_posts_with_screenshots(thread)
-                content += f"- [{thread.name}]({thread.jump_url}) von {author} ({count} Beiträge)\n"
-            content += "\n"
+    grouped = {key: [] for key in CATEGORIES}
 
-        content += f"*Letzte Aktualisierung: {datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S')} UTC*"
+    for thread in all_threads:
+        title = thread.name.lower()
+        for group, keywords in CATEGORIES.items():
+            if any(kw in title for kw in keywords):
+                grouped[group].append(thread)
+                break
 
-    message_id = load_message_id()
+    max_rows = max(len(v) for v in grouped.values())
+    columns = list(grouped.keys())
 
-    if message_id:
-        try:
-            msg = await output_channel.fetch_message(message_id)
-            await msg.edit(content=content)
-            return
-        except discord.NotFound:
-            pass
+    table = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\n\n"
+    table += f"`{columns[0]:<35} | {columns[1]:<20} | {columns[2]:<25}`\n"
+    table += "`" + "-"*85 + "`\n"
 
-    msg = await output_channel.send(content)
-    save_message_id(msg.id)
+    for i in range(max_rows):
+        row = []
+        for group in columns:
+            try:
+                thread = grouped[group][i]
+                count = await count_logical_posts(thread)
+                text = f"[{thread.name}]({thread.jump_url}) ({count})"
+                text = text[:33] + "…" if len(text) > 35 else text
+            except IndexError:
+                text = ""
+            row.append(f"{text:<35}")
+        table += "`" + " | ".join(row) + "`\n"
 
+    table += f"\n*Letzte Aktualisierung: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M:%S')} UTC*"
+
+    await output_channel.send(table)
 
 @bot.command()
 async def update(ctx):
     await update_forum_overview()
-    await ctx.send("✅ Forum-Übersicht aktualisiert.")
+    await ctx.send("✅ Übersicht manuell aktualisiert.")
 
 bot.run(TOKEN)
