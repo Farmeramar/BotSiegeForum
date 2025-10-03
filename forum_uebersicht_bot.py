@@ -97,8 +97,7 @@ async def update_forum_overview():
             content += "_Keine Einträge_\n"
         for thread in thread_list:
             count = await count_all_posts(thread)
-            owner = thread.owner.display_name if thread.owner else "Unbekannt"
-            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
+            content += f"• [{thread.name}]({thread.jump_url}) ({count})\n"
         content += "\n"
 
     if ungrouped:
