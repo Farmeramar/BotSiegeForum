@@ -61,13 +61,18 @@ async def update_forum_overview():
     all_threads = threads + archived
 
     grouped = {key: [] for key in CATEGORIES}
+    ungrouped = []
 
     for thread in all_threads:
         title = thread.name.lower()
+        matched = False
         for group, keywords in CATEGORIES.items():
             if any(kw in title for kw in keywords):
                 grouped[group].append(thread)
+                matched = True
                 break
+        if not matched:
+            ungrouped.append(thread)
 
     content = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\n\n"
 
@@ -76,6 +81,14 @@ async def update_forum_overview():
         if not thread_list:
             content += "_Keine Einträge_\n"
         for thread in thread_list:
+            count = await count_logical_posts(thread)
+            owner = thread.owner.display_name if thread.owner else "Unbekannt"
+            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
+        content += "\n"
+
+    if ungrouped:
+        content += "👥 **Beiträge der Clanmitglieder**\n"
+        for thread in ungrouped:
             count = await count_logical_posts(thread)
             owner = thread.owner.display_name if thread.owner else "Unbekannt"
             content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
