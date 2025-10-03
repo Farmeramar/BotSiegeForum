@@ -69,29 +69,21 @@ async def update_forum_overview():
                 grouped[group].append(thread)
                 break
 
-    max_rows = max(len(v) for v in grouped.values())
-    columns = list(grouped.keys())
+    content = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\n\n"
 
-    table = f"**📌 Thematische Übersicht ({len(all_threads)} Einträge):**\n\n"
-    table += f"`{columns[0]:<35} | {columns[1]:<20} | {columns[2]:<25}`\n"
-    table += "`" + "-"*85 + "`\n"
+    for category, thread_list in grouped.items():
+        content += f"{category}\n"
+        if not thread_list:
+            content += "_Keine Einträge_\n"
+        for thread in thread_list:
+            count = await count_logical_posts(thread)
+            owner = thread.owner.display_name if thread.owner else "Unbekannt"
+            content += f"• [{thread.name}]({thread.jump_url}) von {owner} ({count})\n"
+        content += "\n"
 
-    for i in range(max_rows):
-        row = []
-        for group in columns:
-            try:
-                thread = grouped[group][i]
-                count = await count_logical_posts(thread)
-                text = f"[{thread.name}]({thread.jump_url}) ({count})"
-                text = text[:33] + "…" if len(text) > 35 else text
-            except IndexError:
-                text = ""
-            row.append(f"{text:<35}")
-        table += "`" + " | ".join(row) + "`\n"
+    content += f"*Letzte Aktualisierung: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M:%S')} UTC*"
 
-    table += f"\n*Letzte Aktualisierung: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M:%S')} UTC*"
-
-    await output_channel.send(table)
+    await output_channel.send(content)
 
 @bot.command()
 async def update(ctx):
