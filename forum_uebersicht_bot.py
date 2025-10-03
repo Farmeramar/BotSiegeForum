@@ -32,8 +32,14 @@ overview_message_id = None
 # Neue, korrigierte Zählfunktion: zählt **alle Nachrichten**
 async def count_all_posts(thread):
     count = 0
-    async for _ in thread.history(limit=None):
-        count += 1
+    async for msg in thread.history(limit=None):
+        has_image_attachment = any(
+            a.content_type and a.content_type.startswith("image/") for a in msg.attachments
+        )
+        has_image_embed = any(e.image for e in msg.embeds)
+
+        if has_image_attachment or has_image_embed:
+            count += 1
     return count
 
 @bot.event
