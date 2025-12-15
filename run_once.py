@@ -10,8 +10,8 @@ TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_TOKEN".replace("TOKEN",
 # DISCORD_TOKEN, FORUM_CHANNEL_ID, OUTPUT_CHANNEL_ID
 
 TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("DISCORD_BOT_TOKEN") or os.getenv("DISCORD_TOKEN")
-FORUM_CHANNEL_ID = int(os.getenv("FORUM_CHANNEL_ID"))
-OUTPUT_CHANNEL_ID = int(os.getenv("OUTPUT_CHANNEL_ID"))
+FORUM_CHANNEL_ID = int(1401998686271049800)
+OUTPUT_CHANNEL_ID = int(1401998641027088458)
 
 # Intents minimal halten (du brauchst keine message_content / members)
 intents = discord.Intents.default()
